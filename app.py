@@ -23,9 +23,19 @@ def create_multimodal_index(documents, images):
 from llama_index.llms.nvidia import NVIDIA
 Settings.llm = NVIDIA(model="meta/llama-3.1-8b-instruct")
 
+import PyPDF2
+
+def extract_text_from_pdf(file_obj):
+    pdf_reader = PyPDF2.PdfReader(file_obj)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    return text
+
+
 from llama_index.readers.file import (
     DocxReader,
-    PDFReader,
+    #PDFReader,
     HTMLTagReader,
     ImageReader,
     PptxReader,
@@ -63,6 +73,8 @@ def get_files_from_input(file_objs):
     return [file_obj.name for file_obj in file_objs]
 
 # Function to load documents and create the index
+
+# In your load_documents function:
 def load_documents(file_objs, url=None):
     global index, query_engine
     all_texts = []
@@ -87,7 +99,7 @@ def load_documents(file_objs, url=None):
                 all_images.append(file_obj.name)
             else:
                 try:
-                    all_texts.extend(extractor.extract(file_obj))
+                    all_texts.extend(extract_text_from_pdf(file_obj))
                 except Exception as e:
                     print(f"Error extracting text from {file_obj.name}:{e}")
         else:
