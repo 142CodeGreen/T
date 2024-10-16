@@ -90,7 +90,7 @@ def load_documents(file_objs, url=None):
         ".jpg": ImageReader(),
         ".png": ImageReader(),
         }
-
+    file_results = []
     for file_obj in file_objs:
         file_extension = os.path.splitext(file_obj.name)[1].lower()
         if file_extension in file_extractor:
