@@ -229,26 +229,23 @@ def stream_response(message,history):
 
 # Create the Gradio interface
 with gr.Blocks() as demo:
-  gr.Markdown("# Multimodal RAG Chatbot 🦀 ")
-  gr.Markdown("Upload **at least** one document, optional to input HTML URL before Q&A")  
+    gr.Markdown("# Multimodal RAG Chatbot with NeMo Guardrails 🦀 ")
+    gr.Markdown("Upload **at least** one document, optional to input HTML URL before Q&A")  
+    with gr.Row():
+        with gr.Column():
+            file_uploader = gr.Files(label="Select files to upload",file_count="multiple")
+            url_input = gr.Textbox(label="Enter URL", placeholder="Optional: Enter HTML URL here")
+        with gr.Column():
+            load_btn = gr.Button("Load Documents & URL")
+    load_output = gr.Textbox(label="Processing Status")
+    chatbot = gr.Chatbot()
+    msg = gr.Textbox(label="Enter your question",interactive=True)
+    clear = gr.ClearButton(components=[chatbot, msg])
 
-  with gr.Row():
-    with gr.Column():  # Group file_uploader and url_input on the left
-      file_uploader = gr.File(label="Select files to upload", file_count="multiple")
-      url_input = gr.Textbox(label="🔗 Paste a URL (optional)", placeholder="Enter a HTML URL here")
-    load_btn = gr.Button("Upload input (PDF,CSV,Docx,Pptx,JPG,PNG,website)")  # Place load_btn on the right
-
-  load_output = gr.Textbox(label="Load Status")
-
-  chatbot = gr.Chatbot()
-  msg = gr.Textbox(label="Enter your question",interactive=True)
-  clear = gr.Button("Clear")
-
-# Set up event handler (Event handlers should be defined within the 'with gr.Blocks() as demo:' block)
-  load_btn.click(fn=load_documents, inputs=[file_uploader, url_input], outputs=load_output)
-  # user the chat function with nemo guardrails for message
-  msg.submit(chat, inputs=[msg, chatbot], outputs=[chatbot]) # Use submit button instead of msg
-  clear.click(lambda: None, None, chatbot, queue=False)
+    load_btn.click(load_documents, inputs=[file_uploader, url_input], outputs=load_output)
+    msg.submit(moderated_chat, inputs=[msg, chatbot], outputs=chatbot, queue=False)
+    clear.click(fn=lambda: ([], ""), outputs=[chatbot, msg])
+    
 
 # Launch the Gradio interface
 if __name__ == "__main__":
