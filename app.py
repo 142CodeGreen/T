@@ -87,27 +87,30 @@ def load_documents(file_objs, urls=None):
         index = create_multimodal_index(texts, images)
         query_engine = index.as_query_engine()
         
-      for file_obj in file_objs:  # Iterate through file objects  # to process correct file type
-            file_extension = os.path.splitext(file_obj.name)[1].lower()
-            if file_extension in file_extractor:
-                extractor = file_extractor[file_extension]
-                if file_extension in (".jpg", ".png"):  # Process images
-                    extracted_text = extract_text_from_image(file_obj)  # Implement extract_text_from_image 
-                else:
-                    extracted_text = extractor.extract(file_obj)
-                all_texts.extend(extracted_text)  # Add extracted text to the list
-            else:
-                print(f"Warning: Unsupported file type: {file_extension}")
+        def extract_text_from_files(file_objs, file_extractor):
+            all_texts = []
+            for file_obj in file_objs:
+                file_extension = os.path.splitext(file_obj.name)[1].lower()
+                if file_extension in file_extractor:
+                    extractor = file_extractor[file_extension]
+                    # Process images or other file types
+                    extracted_text = (
+                        extract_text_from_image(file_obj)  
+                        if file_extension in (".jpg", ".png") 
+                        else extractor.extract(file_obj)
+                    )
+                    all_texts.extend(extracted_text)
+            return all_texts
         
 
-        # file_paths = get_files_from_input(file_objs)
-        #documents = []
-        #for file_path in file_paths:
-        #    directory = os.path.dirname(file_path)
-        #    documents.extend(SimpleDirectoryReader(input_files=[file_path]).load_data())
+        file_paths = get_files_from_input(file_objs)
+        documents = []
+        for file_path in file_paths:
+            directory = os.path.dirname(file_path)
+            documents.extend(SimpleDirectoryReader(input_files=[file_path]).load_data())
 
-        #if not documents:
-        #    return f"No documents found in the selected files."
+        if not documents:
+            return f"No documents found in the selected files."
 
 
         # Create a Milvus vector store and storage context
