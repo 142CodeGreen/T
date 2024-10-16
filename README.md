@@ -4,8 +4,8 @@
 
 1. Clone the repository:
 ```
-git clone https://github.com/142CodeGreen/Multimodal_RAG_with_Nemo_Guardrails.git
-cd Multimodal_RAG_with_Nemo_Guardrails
+git clone https://github.com/142CodeGreen/T.git
+cd T
 ```
 
 2. Install the required packages:
