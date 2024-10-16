@@ -90,20 +90,24 @@ def load_documents(file_objs, url=None):
         ".jpg": ImageReader(),
         ".png": ImageReader(),
         }
-    
+
     for file_obj in file_objs:
         file_extension = os.path.splitext(file_obj.name)[1].lower()
         if file_extension in file_extractor:
             extractor = file_extractor[file_extension]
             if file_extension in (".jpg", ".png", ".jpeg"):
                 all_images.append(file_obj.name)
+                file_results.append(f"Image processed: {file_obj.name}")
             else:
                 try:
-                    all_texts.extend(extractor.extract(file_obj))
+                    texts = extractor.extract(file_obj)
+                    all_texts.extend(texts)
+                    file_results.append(f"Text extracted from: {file_obj.name}")
                 except Exception as e:
-                    print(f"Error extracting text from {file_obj.name}:{e}")
+                    file_results.append(f"Error extracting text from {file_obj.name}: {e}")
         else:
-            print(f"Unsupported file type: {file_extension}")
+            file_results.append(f"Unsupported file type ignored: {file_extension}")
+     return "\n".join(file_results) 
 
     if url:
         try:
