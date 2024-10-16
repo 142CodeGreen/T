@@ -89,7 +89,7 @@ def load_documents(file_objs, url=None):
                 try:
                     all_texts.extend(extractor.extract(file_obj))
                 except Exception as e:
-                    print(f"Error extracting text from {file_obj.name}:
+                    print(f"Error extracting text from {file_obj.name}:{e}")
         else:
             print(f"Unsupported file type: {file_extension}")
 
