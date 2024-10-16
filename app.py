@@ -83,15 +83,21 @@ def load_documents(file_objs, url=None):
         file_extension = os.path.splitext(file_obj.name)[1].lower()
         if file_extension in file_extractor:
             extractor = file_extractor[file_extension]
-            if file_extension in (".jpg", ".png")
+            if file_extension in (".jpg", ".png", ".jpeg"):
                 all_images.append(file_obj.name)
             else:
-                all_texts.extend(extractor.extract(file_obj))
+                try:
+                    all_texts.extend(extractor.extract(file_obj))
+                except Exception as e:
+                    print(f"Error extracting text from {file_obj.name}:
         else:
             print(f"Unsupported file type: {file_extension}")
 
     if url:
-        all_texts.append(process_url(url))
+        try:
+            all_texts.append(process_url(url))
+        except Exception as e:
+            print(f"Error processing URL: {e}")
 
     if not all_texts and not all_images:
         return f"No documents found in the selected files or URL."
