@@ -162,11 +162,14 @@ def process_url(url):
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        # Extract text from the webpage
-        text = soup.get_text()
+        # Extract only relevant text, remove scripts and styles
+        for script in soup(["script", "style"]):
+            script.decompose()
+        text = soup.get_text(separator=' ', strip=True)
         return text
     except requests.RequestException as e:
         return f"Error processing URL: {e}"
+        
 
 # Multimodal embedding
 from sentence_transformers import SentenceTransformer
@@ -187,29 +190,44 @@ def multimodal_embedding(text, img_path=None):
         return model.encode(text)
 
 # Function to handle chat interactions
-def chat(message, history):
-    global query_engine
+def moderated_chat(message, history):
+    global query_engine, rails
     if query_engine is None:
         return history + [("Please upload a file first.", None)]
     try:
+        response = query_engine.query(message)
+        full_response = ""
+        for chunk in response.response_gen:
+            full_response += chunk
+            moderated_chunk = rails.generate(context=full_response, prompt=message)
+            history.append((message, moderated_chunk))
+            yield history
+    except Exception as e:
+        yield history + [(message, f"An error occurred: {str(e)}")]
+
+#def chat(message, history):
+#    global query_engine
+#    if query_engine is None:
+#        return history + [("Please upload a file first.", None)]
+#    try:
         # get the user's message
-        user_message = message
+#        user_message = message
         
         # Assuming query_engine is set up to retrieve relevant documents
-        response = query_engine.query(user_message)
+#        response = query_engine.query(user_message)
         
         # validate and potentially modify the response using guardrail
-        validated_response = rails.generate(
-            context=response.response,
-            prompt=user_message,
-        )
+#       validated_response = rails.generate(
+#            context=response.response,
+#            prompt=user_message,
+#        )
 
         #update the chat history with the validated response
-        history.append((user_message, validated_response))
-        return history
+ #       history.append((user_message, validated_response))
+ #       return history
 
-    except Except as e:
-        return history + [(message, f"Error processing query: {str(e)}")]
+ #   except Except as e:
+ #       return history + [(message, f"Error processing query: {str(e)}")]
 
 # Function to stream responses
 def stream_response(message,history):
