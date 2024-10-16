@@ -180,13 +180,23 @@ def chat(message, history):
     if query_engine is None:
         return history + [("Please upload a file first.", None)]
     try:
-        # Here is where you implement RAG:
+        # get the user's message
+        user_message = message
+        
         # Assuming query_engine is set up to retrieve relevant documents
-        response = query_engine.query(message)
-        # Generate an answer based on the response or context retrieved
-        generated_answer = f"Based on my knowledge, {response.response}"  # This should be more sophisticated in a real scenario
-        return history + [(message, generated_answer)]
-    except Exception as e:
+        response = query_engine.query(user_message)
+        
+        # validate and potentially modify the response using guardrail
+        validated_response = rails.generate(
+            context=response.response,
+            prompt=user_message,
+        )
+
+        #update the chat history with the validated response
+        history.append((user_message, validated_response))
+        return history
+
+    except Except as e:
         return history + [(message, f"Error processing query: {str(e)}")]
 
 # Function to stream responses
@@ -224,7 +234,8 @@ with gr.Blocks() as demo:
 
 # Set up event handler (Event handlers should be defined within the 'with gr.Blocks() as demo:' block)
   load_btn.click(fn=load_documents, inputs=[file_uploader, url_input], outputs=load_output)
-  msg.submit(stream_response, inputs=[msg, chatbot], outputs=[chatbot]) # Use submit button instead of msg
+  # user the chat function with nemo guardrails for message
+  msg.submit(chat, inputs=[msg, chatbot], outputs=[chatbot]) # Use submit button instead of msg
   clear.click(lambda: None, None, chatbot, queue=False)
 
 # Launch the Gradio interface
