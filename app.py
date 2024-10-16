@@ -67,17 +67,8 @@ def load_documents(file_objs, url=None):
     global index, query_engine
     all_texts = []
     all_images = []
-    
-    for file in file_objs:
-        if file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
-            all_images.append(file.name)
-        else:
-            all_texts.extend(file_extractor.get(os.path.splitext(file.name)[1].lower(), lambda x: ["Unsupported file type"])(file))
 
-    if url:
-        all_texts.append(process_url(url))
-        
-        file_extractor = {
+    file_extractor = {
         ".pdf": PDFReader(),
         ".csv": CSVReader(),
         ".html": HTMLTagReader(),
@@ -87,40 +78,26 @@ def load_documents(file_objs, url=None):
         ".jpg": ImageReader(),
         ".png": ImageReader(),
         }
-
-        images = [f for f in file_objs if f.name.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        texts = all_texts  # From your existing extraction
     
-        index = create_multimodal_index(texts, images)
-        query_engine = index.as_query_engine()
-        
-        def extract_text_from_files(file_objs, file_extractor):
-            all_texts = []
-            for file_obj in file_objs:
-                file_extension = os.path.splitext(file_obj.name)[1].lower()
-                if file_extension in file_extractor:
-                    extractor = file_extractor[file_extension]
-                    # Process images or other file types
-                    extracted_text = (
-                        extract_text_from_image(file_obj)  
-                        if file_extension in (".jpg", ".png") 
-                        else extractor.extract(file_obj)
-                    )
-                    all_texts.extend(extracted_text)
-            return all_texts
-        
+    for file_obj in file_objs:
+        file_extension = os.path.splitext(file_obj.name)[1].lower()
+        if file_extension in file_extractor:
+            extractor = file_extractor[file_extension]
+            if file_extension in (".jpg", ".png")
+                all_images.append(file_obj.name)
+            else:
+                all_texts.extend(extractor.extract(file_obj))
+        else:
+            print(f"Unsupported file type: {file_extension}")
 
-        file_paths = get_files_from_input(file_objs)
-        documents = []
-        for file_path in file_paths:
-            directory = os.path.dirname(file_path)
-            documents.extend(SimpleDirectoryReader(input_files=[file_path]).load_data())
+    if url:
+        all_texts.append(process_url(url))
 
-        if not documents:
-            return f"No documents found in the selected files."
+    if not all_texts and not all_images:
+        return f"No documents found in the selected files or URL."
+            
 
-
-        # Create a Milvus vector store and storage context
+    # Create a Milvus vector store and storage context
         # vector_store = MilvusVectorStore(
         #    host="127.0.0.1",
         #    port=19530,
@@ -130,21 +107,17 @@ def load_documents(file_objs, url=None):
         #    output_fields=["field1","field2"]
         #)
         
-        vector_store = MilvusVectorStore(uri="./milvus_demo.db", dim=1024, overwrite=True,output_fields=[])
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        multimodal_docs = create_multimodal_index(all_texts, all_images)  # Adjust this function call as needed
-        index = VectorStoreIndex.from_documents(multimodal_docs, storage_context=storage_context)
-        return index
+    vector_store = MilvusVectorStore(uri="./milvus_demo.db", dim=1024, overwrite=True,output_fields=[])
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-        # Create the index from the documents
-        multimodal_docs = create_multimodal_index(all_texts, all_images)  # Adjust this function call as needed
-    
+    #create the multimodal index
+    multimodal_docs = create_multimodal_index(all_texts, all_images)
+    index = VectorStoreIndex.from_documents(multimodal_docs, storage_context=storage_context)
         
-        # Create the query engine after the index is created
-        query_engine = index.as_query_engine()
-        return f"Loaded {len(all_texts)} text segments and {len(all_images)} images."
-    except Exception as e:
-        return f"Error loading documents: {str(e)}"
+    # Create the query engine after the index is created
+    query_engine = index.as_query_engine()
+    return f"Loaded {len(all_texts)} text segments and {len(all_images)} images."
+    
 
 # Function to extract text from image (replace with your preferred method)
 from PIL import Image
@@ -227,11 +200,6 @@ def stream_response(message,history):
         yield history + [(message, f"Error processing query: {str(e)}")]
 
 # Create the Gradio interface
-def process_multimodal_uploads(image, text, file):
-    # This function would process the inputs as needed. Here's just a placeholder
-    # response reflecting what's been uploaded.
-    return f"Processed: Image: {'Yes' if image else 'No'}, Text: {text}, File: {file.name if file else 'No file'}"
-
 with gr.Blocks() as demo:
   gr.Markdown("# Multimodal RAG Chatbot 🦀 ")
   gr.Markdown("Upload **at least** one document, optional to input HTML URL before Q&A")  
