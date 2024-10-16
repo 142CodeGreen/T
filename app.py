@@ -63,13 +63,20 @@ def get_files_from_input(file_objs):
     return [file_obj.name for file_obj in file_objs]
 
 # Function to load documents and create the index
-def load_documents(file_objs, urls=None):
+def load_documents(file_objs, url=None):
     global index, query_engine
-    try:
-        if not file_objs:
-            return "Error: No files selected."
-            
-        all_texts = []  # Accumulate text from all files
+    all_texts = []
+    all_images = []
+    
+    for file in file_objs:
+        if file.name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            all_images.append(file.name)
+        else:
+            all_texts.extend(file_extractor.get(os.path.splitext(file.name)[1].lower(), lambda x: ["Unsupported file type"])(file))
+
+    if url:
+        all_texts.append(process_url(url))
+        
         file_extractor = {
         ".pdf": PDFReader(),
         ".csv": CSVReader(),
@@ -125,15 +132,17 @@ def load_documents(file_objs, urls=None):
         
         vector_store = MilvusVectorStore(uri="./milvus_demo.db", dim=1024, overwrite=True,output_fields=[])
         storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        multimodal_docs = create_multimodal_index(all_texts, all_images)  # Adjust this function call as needed
         index = VectorStoreIndex.from_documents(multimodal_docs, storage_context=storage_context)
         return index
 
         # Create the index from the documents
-        index = VectorStoreIndex.from_documents(all_texts, embedding=embeddings) # Create index inside the function after documents are loaded
-
+        multimodal_docs = create_multimodal_index(all_texts, all_images)  # Adjust this function call as needed
+    
+        
         # Create the query engine after the index is created
         query_engine = index.as_query_engine()
-        return f"Successfully loaded {len(documents)} documents from {len(file_paths)} files."
+        return f"Loaded {len(all_texts)} text segments and {len(all_images)} images."
     except Exception as e:
         return f"Error loading documents: {str(e)}"
 
@@ -187,17 +196,19 @@ def multimodal_embedding(text, img_path=None):
         return model.encode(text)
 
 # Function to handle chat interactions
-def chat(message,history):
+def chat(message, history):
     global query_engine
     if query_engine is None:
-        return history + [("Please upload a file first.",None)]
+        return history + [("Please upload a file first.", None)]
     try:
-        #modification for nemo guardrails ( next three rows)
-        user_message = {"role":"user","content":message}
-        response = rails.generate(messages=[user_message])
-        return history + [(message,response['content'])]
+        # Here is where you implement RAG:
+        # Assuming query_engine is set up to retrieve relevant documents
+        response = query_engine.query(message)
+        # Generate an answer based on the response or context retrieved
+        generated_answer = f"Based on my knowledge, {response.response}"  # This should be more sophisticated in a real scenario
+        return history + [(message, generated_answer)]
     except Exception as e:
-        return history + [(message,f"Error processing query: {str(e)}")]
+        return history + [(message, f"Error processing query: {str(e)}")]
 
 # Function to stream responses
 def stream_response(message,history):
@@ -238,7 +249,7 @@ with gr.Blocks() as demo:
   clear = gr.Button("Clear")
 
 # Set up event handler (Event handlers should be defined within the 'with gr.Blocks() as demo:' block)
-  load_btn.click(process_multimodal_uploads,inputs=[file_uploader, url_input], outputs=[load_output])
+  load_btn.click(fn=load_documents, inputs=[file_uploader, url_input], outputs=load_output)
   msg.submit(stream_response, inputs=[msg, chatbot], outputs=[chatbot]) # Use submit button instead of msg
   clear.click(lambda: None, None, chatbot, queue=False)
 
