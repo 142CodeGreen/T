@@ -107,7 +107,7 @@ def load_documents(file_objs, url=None):
                     file_results.append(f"Error extracting text from {file_obj.name}: {e}")
         else:
             file_results.append(f"Unsupported file type ignored: {file_extension}")
-     return "\n".join(file_results) 
+    return "\n".join(file_results) 
 
     if url:
         try:
