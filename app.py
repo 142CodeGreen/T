@@ -104,7 +104,7 @@ def load_documents(file_objs, url=None):
                     all_texts.extend(texts)
                     file_results.append(f"Text extracted from: {file_obj.name}")
                 except Exception as e:
-                    file_results.append(f"Error extracting text from {file_obj.name}: {e}")
+                    file_results.append(f"Error processing file {file_obj.name}: {e}")
         else:
             file_results.append(f"Unsupported file type ignored: {file_extension}")
     return "\n".join(file_results) 
@@ -133,8 +133,9 @@ def load_documents(file_objs, url=None):
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     #create the multimodal index
-    multimodal_docs = create_multimodal_index(all_texts, all_images)
-    index = VectorStoreIndex.from_documents(multimodal_docs, storage_context=storage_context)
+    index = create_multimodal_index(all_texts, all_images)
+    # multimodal_docs = create_multimodal_index(all_texts, all_images)
+    # index = VectorStoreIndex.from_documents(multimodal_docs, storage_context=storage_context)
         
     # Create the query engine after the index is created
     query_engine = index.as_query_engine()
@@ -146,6 +147,16 @@ from PIL import Image
 import numpy as np
 
 # Add to your existing ImageReader or create a new function for processing:
+from transformers import CLIPModel, CLIPProcessor
+
+model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+def process_image(image_path):
+    image = Image.open(image_path)
+    inputs = processor(images=image, return_tensors="pt")
+    return model.get_image_features(**inputs).detach().numpy().tolist()
+    
 def process_image(file_path):
     with Image.open(file_path) as img:
         img_array = np.array(img)
@@ -199,7 +210,8 @@ def moderated_chat(message, history):
     if query_engine is None:
         return history + [("Please upload a file first.", None)]
     try:
-        response = query_engine.query(message)
+        response = rails.generate(context=response, prompt=message)
+        #response = query_engine.query(message)
         full_response = ""
         for chunk in response.response_gen:
             full_response += chunk
@@ -241,7 +253,8 @@ def stream_response(message,history):
         return
 
     try:
-        response = query_engine.query(message)
+        response = rails.generate(context=response, prompt=message)
+        #response = query_engine.query(message)
         partial_response = ""
         for text in response.response_gen:
             partial_response += text
